@@ -1,75 +1,139 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import OfferCarousel from "@/components/home/OfferCarousel";
+import { ThemedText } from "@/components/ThemedText";
+import { STRAPI_URL } from "@/lib/constants";
+import { gql, useQuery } from "@apollo/client";
+import { Image } from "expo-image";
+import { Link, Stack } from "expo-router";
+import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const GET_HOME_QUERY = gql`
+  query Pages($filters: PageFiltersInput) {
+    pages(filters: $filters) {
+      documentId
+      slug
+      title
+      blocks {
+        ... on ComponentSharedCard {
+          cta
+          description
+          id
+          image {
+            url
+          }
+          link
+          title
+        }
+      }
+    }
+  }
+`;
+
+const GET_CATEGORIES_QUERY = gql`
+  query Category {
+    categories {
+      documentId
+      name
+      slug
+      image {
+        url
+      }
+    }
+  }
+`;
 
 export default function HomeScreen() {
+  const { loading, error, data } = useQuery(GET_HOME_QUERY, {
+    variables: {
+      filters: {
+        slug: {
+          eq: "home",
+        },
+      },
+    },
+  });
+
+  const {
+    loading: catLoading,
+    error: catError,
+    data: catData,
+  } = useQuery(GET_CATEGORIES_QUERY, {
+    variables: {
+      filters: {
+        slug: {
+          eq: "home",
+        },
+      },
+    },
+  });
+
+  if (loading)
+    return (
+      <ThemedText style={tw`text-center p-4 text-lg text-gray-600`}>
+        Loading...
+      </ThemedText>
+    );
+  if (error) return <ThemedText>Error: {error.message}</ThemedText>;
+
+  console.log({ catData });
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView style={tw`flex-1 p-4`}>
+        <TextInput
+          placeholder="Search Products..."
+          style={tw`w-full rounded-2xl p-3 text-gray-400 border border-gray-300`}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+        <OfferCarousel />
+
+        {/* categories section */}
+        <View style={tw`mt-8 flex flex-row flex-wrap gap-2 mb-16`}>
+          <View style={tw`w-full mb-4`}>
+            <ThemedText
+              style={[
+                tw`text-gray-400 text-left uppercase`,
+                { fontFamily: "Montserrat_500Medium" },
+              ]}
+            >
+              Shop By Category
+            </ThemedText>
+          </View>
+          <View style={tw`flex w-full flex-row  flex-wrap`}>
+            {catData?.categories.map((category: any, index: number) => (
+              <View
+                style={tw`inline-block w-1/2 pr-2 font-[Inter]  `}
+                key={index}
+              >
+                <Link
+                  href={`/category/${category.slug}?id=${category.documentId}`}
+                >
+                  <Image
+                    source={`${STRAPI_URL}` + category.image.url}
+                    style={tw`w-full h-40 rounded-md`}
+                  />
+                  <ThemedText
+                    key={index}
+                    style={[
+                      tw`text-lg font-bold text-gray-400`,
+                      { fontFamily: "Montserrat_500Medium" },
+                    ]}
+                  >
+                    {category.name}
+                  </ThemedText>
+                </Link>
+              </View>
+            ))}
+            <View style={tw`w-1/2 mt-3`}>
+              <TouchableOpacity
+                style={tw`w-full flex items-center justify-center bg-stone-800 rounded-md h-[162px]`}
+              >
+                <ThemedText>View All</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
